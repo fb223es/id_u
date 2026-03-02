@@ -1,0 +1,85 @@
+:root {
+  --hue: 320; 
+  --saturation: 40%;
+  --lightness: 90%; 
+}
+
+body {
+  background-color: hsl(var(--hue), var(--saturation), var(--lightness));
+  
+}
+header, #currentCountry, #basevalue, #value{
+   width: 85%;
+  margin: 1.5rem auto;           
+  display: flex;
+  justify-content: center;   
+  border-radius: 30px;       
+  
+  padding: 1rem;  
+  
+    background-color: hsl(
+    var(--hue),
+    calc(var(--saturation) - 10%), 
+    calc(var(--lightness) - 10%)     
+  );
+}
+header {
+   background-color: #fff;          
+
+  h1 {
+    color: #000000;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+  }
+}
+#currentCountry div {
+  padding: 1rem;
+  background-color: hsl(var(--hue), calc(var(--saturation) - 15%), calc(var(--lightness) - 15%));
+  border-radius: 20px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+  text-align: center;
+}
+#currentCountry img {
+  margin-top: 0.5rem;
+}
+#currentCountry {
+
+}
+#basevalue{
+
+}
+#value{
+
+}
+#countryInfo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#countryInfo h3 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #000;
+}
+
+#countryInfo img {
+    width: 120px;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+#countryInfo p.coords {
+    margin: 0;
+    color: #333;
+    font-size: 0.9rem;
+}
+.shake-message {
+    margin: 0.5rem 0;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #333;
+}
