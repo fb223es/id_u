@@ -5,6 +5,7 @@ function App(position) {
 
   this.geoService = new GeoNamesService("fridooow99");
   this.countryApi = new CountryApi();
+  this.currencyApi = new CurrencyApi();
   this.ui = new UIController("countryInfo", "shakeMessageContainer");
   this.motionService = new DeviceMotionService();
 
@@ -16,17 +17,16 @@ function App(position) {
 }
 
 // INIT
-App.prototype.init = function() {
-  const self = this;
+App.prototype.init = async function() {
   console.log("App init");
 
   // Starta shake detection
-  this.motionService.start(function(strength) {
+  this.motionService.start((strength) => {
     console.log("Telefonen skakades!", strength);
-    self.onShake();
+    this.onShake();
   }, 35);
 
-  // Skapa overlay spinner
+  // --- Skapa overlay spinner ---
   const overlay = document.createElement("div");
   overlay.id = "loadingOverlayDynamic";
   Object.assign(overlay.style, {
@@ -55,7 +55,7 @@ App.prototype.init = function() {
   overlay.appendChild(spinner);
   document.body.appendChild(overlay);
 
-  // Lägg till CSS keyframes för spinner om det inte finns
+  // CSS keyframes
   if (!document.getElementById("spinnerKeyframes")) {
     const style = document.createElement("style");
     style.id = "spinnerKeyframes";
@@ -68,87 +68,58 @@ App.prototype.init = function() {
     document.head.appendChild(style);
   }
 
-  // --- Börja hämta land och data ---
-  this.geoService.getCountryCode(this.position.latitude, this.position.longitude)
-    .then(function(code) {
-      console.log("Landkod:", code);
-      return self.countryApi.getCountryByCode(code);
-    })
-    .then(function(data) {
-      if (!data || !data[0]) throw new Error("Landdata saknas");
-      self.country = data[0];
-      console.log("Användarens land:", self.country.name.common);
-      self.ui.renderCountry(self.country, self.position);
+  try {
+    // --- Hämta landkod ---
+    const code = await this.geoService.getCountryCode(this.position.latitude, this.position.longitude);
+    console.log("Landkod:", code);
 
-      return self.countryApi.getAllCountries();
-    })
-    .then(function(countries) {
-      if (!countries || countries.length === 0) throw new Error("Inga länder hämtade");
-      console.log("Alla länder hämtade:", countries.length);
-      self.allCountries = countries;
+    // --- Hämta landdata ---
+    const data = await this.countryApi.getCountryByCode(code);
+    if (!data || !data[0]) throw new Error("Landdata saknas");
+    this.country = data[0];
+    console.log("Användarens land:", this.country.name.common);
+    this.ui.renderCountry(this.country, this.position);
 
-      // --- Skapa valuta dropdowns med gemensam lista ---
-      const currencyMap = {};
-      countries.forEach(country => {
-        if (!country.currencies) return;
-        Object.keys(country.currencies).forEach(code => {
-          if (!currencyMap[code])
-            currencyMap[code] = country.currencies[code].name;
-        });
-      });
+    // --- Hämta alla länder ---
+    const countries = await this.countryApi.getAllCountries();
+    if (!countries || countries.length === 0) throw new Error("Inga länder hämtade");
+    this.allCountries = countries;
+    this.ui.renderCurrencies(countries, this.country);
 
-      // Bygg listan "KOD - Namn"
-      const options = Object.keys(currencyMap).map(code => `${code} - ${currencyMap[code]}`);
+    // --- Hämta växlingskurser via PHP-proxy ---
+    const baseCurrency = Object.keys(this.country.currencies)[0]; // t.ex. SEK
+    const symbols = "USD,EUR,GBP"; // ex. valutor
+    const rateDataRes = await fetch(`currency_proxy.php?base=${baseCurrency}&symbols=${symbols}`);
+    const rateData = await rateDataRes.json();
+    if (!rateData || rateData.error) throw new Error(rateData.error || "Fel vid fetch av kurser");
 
-      // Basvaluta och målvaluta
-      const baseSelect = document.getElementById("baseCurrency");
-      const targetSelect = document.getElementById("targetCurrency");
+    console.log("Kurser för basvaluta:", rateData.rates);
 
-      baseSelect.innerHTML = "<option disabled selected>-- Välj valuta --</option>";
-      targetSelect.innerHTML = "<option disabled selected>-- Välj valuta --</option>";
-
-      options.forEach(optText => {
-        const code = optText.split(" - ")[0];
-        const baseOption = document.createElement("option");
-        baseOption.value = code;
-        baseOption.textContent = optText;
-        baseSelect.appendChild(baseOption);
-
-        const targetOption = document.createElement("option");
-        targetOption.value = code;
-        targetOption.textContent = optText;
-        targetSelect.appendChild(targetOption);
-      });
-
-      // Sätt användarens land som standard
-      const userBase = Object.keys(self.country.currencies)[0];
-      baseSelect.value = userBase;
-      targetSelect.value = userBase;
-
-      // --- Hämta växlingskurser via PHP-proxy ---
-      return fetch(`currency_proxy.php?base=${userBase}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data || data.error) throw new Error(data.error || "Fel vid fetch av kurser");
-          return data;
-        });
-    })
-    .then(function(rateData) {
-      console.log("Kurser för basvaluta:", rateData.rates);
-
-      const firstTarget = Object.keys(rateData.rates)[0];
-      if (firstTarget) {
-        self.currentRate = rateData.rates[firstTarget];
-        self.initConverter(self.currentRate);
-      }
-
-      // ✅ Ta bort overlay helt
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-    })
-    .catch(function(err) {
-      console.error("Fel vid initiering av appen:", err);
-      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    // --- Rendera målvaluta dropdown ---
+    const targetSelect = document.getElementById("targetCurrency");
+    targetSelect.innerHTML = "<option disabled selected>-- Välj valuta --</option>";
+    Object.keys(rateData.rates).forEach((code) => {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = code;
+      targetSelect.appendChild(opt);
     });
+
+    // Initiera converter med första valuta
+    const firstTarget = Object.keys(rateData.rates)[0];
+    if (firstTarget) {
+      this.currentRate = rateData.rates[firstTarget];
+      this.initConverter(this.currentRate);
+    }
+
+    console.log("ALLA FETCHES KLARA");
+
+  } catch (err) {
+    console.error("Fel vid initiering av appen:", err);
+  } finally {
+    // ✅ Ta bort overlay helt från DOM
+    if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
 }
 
 // SHAKE EVENT
@@ -172,12 +143,12 @@ App.prototype.initConverter = function(rate) {
   baseInput.replaceWith(newBase);
   targetInput.replaceWith(newTarget);
 
-  newBase.addEventListener("input", function() {
+  newBase.addEventListener("input", () => {
     const value = parseFloat(newBase.value);
     newTarget.value = isNaN(value) ? "" : (value * rate).toFixed(2);
   });
 
-  newTarget.addEventListener("input", function() {
+  newTarget.addEventListener("input", () => {
     const value = parseFloat(newTarget.value);
     newBase.value = isNaN(value) ? "" : (value / rate).toFixed(2);
   });
