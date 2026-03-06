@@ -10,6 +10,7 @@
     <script src="classes/CountryApi.js"></script>
     <script src="classes/GeoNamesService.js"></script>
     <script src="classes/UIController.js"></script>
+    <script src="classes/CurrencyApi.js"></script>
     <!-- MÅSTE komma innan App.js -->
     <script src="classes/App.js"></script>
     <script src="classes/Main.js"></script>
@@ -20,15 +21,28 @@
     <header>
       <h1>Välkommen till valutaomvandlaren!</h1>
     </header>
+
+  <p>Hämtar din position...</p>
+</div>
     <div id="currentCountry">
       <h2>Du verkar befinna dig i</h2>
       <div id="countryInfo"></div>
+      <div id="shakeMessageContainer"></div>
     </div>
     <div id="basevalue">
-      <h3>Välj din basvaluta</h3>
+     <h3>Välj din basvaluta</h3>
+  <select id="baseCurrency"></select>
     </div>
     <div id="value">
       <h3>Välj vilken valuta du vill omvandla till</h3>
+        <select id="targetCurrency"></select>
     </div>
+  <div id="result">
+  <input type="text" id="inB" placeholder="Basbelopp">
+  <h4 id="bv"></h4>
+
+  <input type="text" id="inM" placeholder="Målbelopp">
+  <h4 id="mv"></h4>
+</div>
   </body>
 </html>

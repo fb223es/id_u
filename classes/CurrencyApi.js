@@ -1,12 +1,9 @@
-//Klass för att hämta information om olika valutor
+// CurrencyApi.js
+function CurrencyApi() {}
 
-function CurrencyApi() {
-    ApiService.call(this, "https://api.moneyconvert.net/");
-}
-
-CurrencyApi.prototype = Object.create(ApiService.prototype);
-CurrencyApi.prototype.constructor = CurrencyApi;
-
-CurrencyApi.prototype.getRates = function(baseCurrency) {
-    return this.get("latest?base=" + baseCurrency);
+CurrencyApi.prototype.getRatesForCountry = function(country) {
+    const baseCurrency = Object.keys(country.currencies)[0];
+    const symbols = "GBP,JPY,EUR";
+    return fetch(`currency_proxy.php?base=${baseCurrency}&symbols=${symbols}`)
+        .then(res => res.json());
 };
