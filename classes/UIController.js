@@ -1,20 +1,29 @@
-// ===== UI CONTROLLER =====
-function UIController(outputElementId, containerId) {
-    this.outputElementId = outputElementId || "countryInfo";
+function UIController(outputElementId, containerId){
+
+    this.outputElementId = outputElementId;
     this.container = document.getElementById(containerId);
-    this.currencies = {}; // objekt med alla valutor
+
+    this.currencies = {};
 }
 
-// ===== VISA LAND OCH FLAGGA =====
-UIController.prototype.renderCountry = function(country, position) {
+
+/* =========================
+   VISA LAND
+   ========================= */
+
+UIController.prototype.renderCountry = function(country, position){
+
     const output = document.getElementById(this.outputElementId);
-    if (!output) return;
+
+    if(!output) return;
 
     output.innerHTML = "";
 
     const container = document.createElement("div");
+
     const title = document.createElement("h3");
     title.innerText = country.name.common;
+
     const flag = document.createElement("img");
     flag.src = country.flags.png;
     flag.alt = country.name.common + " flag";
@@ -22,105 +31,201 @@ UIController.prototype.renderCountry = function(country, position) {
     container.appendChild(title);
     container.appendChild(flag);
 
-    // Visa koordinater om de finns
-    if (position) {
+    if(position){
+
         const coords = document.createElement("p");
-        coords.innerText = "Lat: " + position.latitude.toFixed(4) +
-                           ", Lng: " + position.longitude.toFixed(4);
+
+        coords.innerText =
+        "Lat: " + position.latitude.toFixed(4) +
+        ", Lng: " + position.longitude.toFixed(4);
+
         container.appendChild(coords);
     }
 
     output.appendChild(container);
 };
 
-// ===== VISA SHAKE-MEDDELANDE =====
-UIController.prototype.showShakeMessage = function(text) {
-    if (!this.container) return;
+
+/* =========================
+   VISA SHAKE MEDDELANDE
+   ========================= */
+
+UIController.prototype.showShakeMessage = function(text){
+
+    if(!this.container) return;
+
     this.container.innerHTML = "";
+
     const msg = document.createElement("p");
     msg.innerText = text;
+
     this.container.appendChild(msg);
 };
 
-// ===== SKAPA VALUTADROPDOWNS =====
-UIController.prototype.renderCurrencies = function(countries, userCountry) {
+
+/* =========================
+   SKAPA VALUTADROPDOWNS
+   ========================= */
+
+UIController.prototype.renderCurrencies = function(countries,userCountry,app){
+
     const baseSelect = document.getElementById("baseCurrency");
     const targetSelect = document.getElementById("targetCurrency");
-    if (!baseSelect || !targetSelect) return;
+
+    const baseInput = document.getElementById("inB");
+    const targetInput = document.getElementById("inM");
+
+    const bv = document.getElementById("bv");
+    const mv = document.getElementById("mv");
+
+    if(!baseSelect || !targetSelect) return;
 
     baseSelect.innerHTML = "";
     targetSelect.innerHTML = "";
 
-    // Skapa objekt med alla unika valutor
     this.currencies = {};
+
+    /* =========================
+       SAMLA ALLA VALUTOR
+       ========================= */
+
     countries.forEach(country => {
-        if (!country.currencies) return;
-        for (let code in country.currencies) {
-            if (!this.currencies[code]) {
-                this.currencies[code] = country.currencies[code].name;
+
+        if(!country.currencies) return;
+
+        for(let code in country.currencies){
+
+            if(!this.currencies[code]){
+
+                this.currencies[code] =
+                country.currencies[code].name;
             }
         }
     });
 
-    const codes = Object.keys(this.currencies).sort();
 
-    // Lägg in placeholder för målvaluta
-    const placeholder = document.createElement("option");
-    placeholder.value = "";
-    placeholder.textContent = "-- Välj valuta --";
-    placeholder.disabled = true;
-    placeholder.selected = true;
-    targetSelect.appendChild(placeholder);
+    /* =========================
+       PLACEHOLDER OPTIONS
+       ========================= */
 
-    // Skapa options
-    codes.forEach(code => {
-        const optionBase = document.createElement("option");
-        optionBase.value = code;
-        optionBase.textContent = code + " - " + this.currencies[code];
+    const placeholderBase = document.createElement("option");
+    placeholderBase.value = "";
+    placeholderBase.textContent = "-- Välj basvaluta --";
+    placeholderBase.disabled = true;
+    placeholderBase.selected = true;
 
-        const optionTarget = optionBase.cloneNode(true);
+    baseSelect.appendChild(placeholderBase);
 
-        baseSelect.appendChild(optionBase);
-        targetSelect.appendChild(optionTarget);
+
+    const placeholderTarget = document.createElement("option");
+    placeholderTarget.value = "";
+    placeholderTarget.textContent = "-- Välj målvaluta --";
+    placeholderTarget.disabled = true;
+    placeholderTarget.selected = true;
+
+    targetSelect.appendChild(placeholderTarget);
+
+
+    /* =========================
+       SKAPA OPTIONS
+       ========================= */
+
+    Object.keys(this.currencies).sort().forEach(code => {
+
+        const optBase = document.createElement("option");
+        optBase.value = code;
+        optBase.textContent = code + " - " + this.currencies[code];
+
+        baseSelect.appendChild(optBase);
+
+        const optTarget = document.createElement("option");
+        optTarget.value = code;
+        optTarget.textContent = code + " - " + this.currencies[code];
+
+        targetSelect.appendChild(optTarget);
+
     });
 
-    // Sätt användarens valuta som bas
-    let userCurrency = null;
-    if (userCountry && userCountry.currencies) {
-        userCurrency = Object.keys(userCountry.currencies)[0];
+
+    /* =========================
+       STANDARD BASVALUTA
+       ========================= */
+
+    if(userCountry && userCountry.currencies){
+
+        const userCurrency =
+        Object.keys(userCountry.currencies)[0];
+
         baseSelect.value = userCurrency;
+
+        if(bv){
+            bv.innerText =
+            userCurrency + " - " + this.currencies[userCurrency];
+        }
     }
 
-    // Visa basvaluta
-    const bv = document.getElementById("bv");
-    if (bv && userCurrency) bv.innerText = userCurrency + " - " + this.currencies[userCurrency];
 
-    // Event: när målvalutan ändras
-    targetSelect.addEventListener("change", () => {
-        const mv = document.getElementById("mv");
-        if (mv) mv.innerText = targetSelect.value + " - " + this.currencies[targetSelect.value];
-    });
+    /* =========================
+       EVENT LISTENERS
+       ========================= */
 
-    // **NY LYSSNARE: När basvalutan ändras**
     baseSelect.addEventListener("change", () => {
-        if (bv) bv.innerText = baseSelect.value + " - " + this.currencies[baseSelect.value];
-        // Om du vill kan du även hämta ny kurs via App.loadRate() från Main.js
+
+        if(bv && baseSelect.value){
+            bv.innerText =
+            baseSelect.value + " - " + this.currencies[baseSelect.value];
+        }
+
+        if(baseInput) baseInput.value="";
+        if(targetInput) targetInput.value="";
+
+        if(targetSelect.value && app){
+            app.loadRate();
+        }
+
     });
+
+
+    targetSelect.addEventListener("change", () => {
+
+        if(mv && targetSelect.value){
+            mv.innerText =
+            targetSelect.value + " - " + this.currencies[targetSelect.value];
+        }
+
+        if(baseInput) baseInput.value="";
+        if(targetInput) targetInput.value="";
+
+        if(baseSelect.value && app){
+            app.loadRate();
+        }
+
+    });
+
 };
 
-// ===== UPPDATERA DROPDOWNS VID NY KURS =====
-UIController.prototype.updateCurrencyDropdowns = function(base, target) {
+
+/* =========================
+   UPPDATERA DROPDOWNS
+   ========================= */
+
+UIController.prototype.updateCurrencyDropdowns = function(base,target){
+
     const baseSelect = document.getElementById("baseCurrency");
     const targetSelect = document.getElementById("targetCurrency");
 
-    if (baseSelect && targetSelect && this.currencies) {
-        baseSelect.value = base;
-        targetSelect.value = target;
+    const bv = document.getElementById("bv");
+    const mv = document.getElementById("mv");
 
-        // Uppdatera bv och mv
-        const bv = document.getElementById("bv");
-        const mv = document.getElementById("mv");
-        if (bv) bv.innerText = base + " - " + this.currencies[base];
-        if (mv) mv.innerText = target + " - " + this.currencies[target];
+    if(baseSelect) baseSelect.value = base;
+    if(targetSelect) targetSelect.value = target;
+
+    if(bv && this.currencies[base]){
+        bv.innerText = base + " - " + this.currencies[base];
     }
+
+    if(mv && this.currencies[target]){
+        mv.innerText = target + " - " + this.currencies[target];
+    }
+
 };

@@ -1,99 +1,93 @@
-(function(global) {
-    function DeviceMotionService() {
-        // Singleton
-        if (DeviceMotionService._instance) return DeviceMotionService._instance;
+(function(global){
 
-        this.threshold = 30;       // standard tröskel
-        this._isListening = false;
-        this._callback = null;
-        this._lastX = null;
-        this._lastY = null;
-        this._lastZ = null;
-        this._handleMotion = null;
-        this._firstEvent = false;
+function DeviceMotionService(){
 
-        DeviceMotionService._instance = this;
-    }
+if(DeviceMotionService.instance){
+return DeviceMotionService.instance;
+}
 
-    DeviceMotionService.prototype.start = function(callback, threshold) {
-        if (this._isListening) return;
+this.threshold = 18;
+this.lastTime = 0;
 
-        this.threshold = threshold || this.threshold;
-        this._callback = callback;
-        var self = this;
-        this._firstEvent = false;
+this.lastX=null;
+this.lastY=null;
+this.lastZ=null;
 
-        console.log("DeviceMotion startar...");
+this.callback=null;
 
-        this._handleMotion = function(event) {
-            var a = event.accelerationIncludingGravity || event.acceleration;
+DeviceMotionService.instance=this;
+}
 
-            // fallback om null (DevTools / dator)
-            if (!a) a = {x:0, y:0, z:0};
-            if (a.x === null) a.x = 0;
-            if (a.y === null) a.y = 0;
-            if (a.z === null) a.z = 0;
+DeviceMotionService.prototype.start=function(callback){
 
-            // Ignorera första eventet, sätt lastX/Y/Z
-            if (!self._firstEvent) {
-                self._lastX = a.x;
-                self._lastY = a.y;
-                self._lastZ = a.z;
-                self._firstEvent = true;
-                return; // vänta på nästa event
-            }
+this.callback=callback;
 
-            var delta = Math.abs(a.x - self._lastX) +
-                        Math.abs(a.y - self._lastY) +
-                        Math.abs(a.z - self._lastZ);
+const self=this;
 
-            if (delta > self.threshold && self._callback) {
-                self._callback(delta);
-            }
+console.log("DeviceMotion start");
 
-            // Uppdatera senaste värden
-            self._lastX = a.x;
-            self._lastY = a.y;
-            self._lastZ = a.z;
+window.addEventListener("devicemotion",function(event){
 
-            console.log("Acceleration:", a.x.toFixed(2), a.y.toFixed(2), a.z.toFixed(2), "Delta:", delta.toFixed(2));
-        };
+const acc=event.accelerationIncludingGravity;
 
-        // iOS 13+ permission
-        if (typeof DeviceMotionEvent !== "undefined" &&
-            typeof DeviceMotionEvent.requestPermission === "function") {
+if(!acc){
+console.log("Ingen sensor data");
+return;
+}
 
-            DeviceMotionEvent.requestPermission()
-                .then(function(permissionState) {
-                    if (permissionState === "granted") {
-                        window.addEventListener("devicemotion", self._handleMotion);
-                    } else {
-                        console.warn("DeviceMotion permission nekad");
-                    }
-                })
-                .catch(console.error);
+const x=acc.x||0;
+const y=acc.y||0;
+const z=acc.z||0;
 
-        } else {
-            window.addEventListener("devicemotion", self._handleMotion);
-        }
+if(self.lastX===null){
 
-        this._isListening = true;
-    };
+self.lastX=x;
+self.lastY=y;
+self.lastZ=z;
 
-    DeviceMotionService.prototype.stop = function() {
-        if (this._handleMotion) {
-            window.removeEventListener("devicemotion", this._handleMotion);
-            this._isListening = false;
-            console.log("DeviceMotion stoppad");
-        }
-    };
+return;
+}
 
-    // Fungerar även för test på dator med knapptryck (valfritt)
-    DeviceMotionService.prototype.simulateShake = function(strength) {
-        if (this._callback) this._callback(strength || 50);
-    };
+const delta=
+Math.abs(x-self.lastX)+
+Math.abs(y-self.lastY)+
+Math.abs(z-self.lastZ);
 
-    // Singleton exponeras globalt
-    global.DeviceMotionService = DeviceMotionService;
+console.log("delta:",delta);
+
+if(delta>self.threshold){
+
+const now=Date.now();
+
+if(now-self.lastTime>1200){
+
+self.lastTime=now;
+
+console.log("SHAKE DETECTED");
+
+if(self.callback){
+self.callback(delta);
+}
+
+}
+}
+
+self.lastX=x;
+self.lastY=y;
+self.lastZ=z;
+
+});
+
+};
+
+DeviceMotionService.prototype.simulateShake=function(){
+
+if(this.callback){
+this.callback(50);
+}
+
+};
+
+global.DeviceMotionService=DeviceMotionService;
 
 })(window);
