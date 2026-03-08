@@ -18,30 +18,71 @@ function App(position){
     this.init();
 }
 
-App.prototype.init = async function(){
-
+App.prototype.init = async function() {
     const self = this;
     console.log("App init start");
 
     // Start efter användarinteraktion (krävs i vissa browsers)
-    document.body.addEventListener("click", function(){
+    document.body.addEventListener("click", function() {
         console.log("User interaction detected - starting motion sensor");
-        self.motionService.start(function(strength){
+        self.motionService.start(function(strength) {
             console.log("Shake detected strength:", strength);
             self.onShake();
         });
-    }, {once:true});
+    }, { once: true });
 
     // Fallback: starta ändå efter 2 sek
-    setTimeout(function(){
-        if(!self.motionService._isListening){
+    setTimeout(function() {
+        if(!self.motionService._isListening) {
             console.log("Fallback start of motion sensor");
-            self.motionService.start(function(strength){
+            self.motionService.start(function(strength) {
                 console.log("Shake detected strength:", strength);
                 self.onShake();
             });
         }
     }, 2000);
+
+    // --- Skapa overlay spinner ---
+    const overlay = document.createElement("div");
+    overlay.id = "loadingOverlayDynamic";
+    Object.assign(overlay.style, {
+        position: "fixed",
+        top: "0",
+        left: "0",
+        width: "100vw",
+        height: "100vh",
+        backgroundColor: "rgba(0,0,0,0.3)",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: "9999",
+    });
+
+    const spinner = document.createElement("div");
+    Object.assign(spinner.style, {
+        border: "8px solid #f3f3f3",
+        borderTop: "8px solid #3498db",
+        borderRadius: "50%",
+        width: "80px",
+        height: "80px",
+        animation: "spin 1s linear infinite",
+    });
+
+    overlay.appendChild(spinner);
+    document.body.appendChild(overlay);
+
+    // CSS keyframes
+    if (!document.getElementById("spinnerKeyframes")) {
+        const style = document.createElement("style");
+        style.id = "spinnerKeyframes";
+        style.innerHTML = `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `;
+        document.head.appendChild(style);
+    }
 
     try {
         console.log("Hämtar land med kod...");
@@ -51,20 +92,18 @@ App.prototype.init = async function(){
         );
 
         const countryData = await this.countryApi.getCountryByCode(code);
-        if(!countryData || !countryData[0]) throw new Error("Landdata saknas");
+        if (!countryData || !countryData[0]) throw new Error("Landdata saknas");
         this.country = countryData[0];
         this.ui.renderCountry(this.country, this.position);
 
-        // Hämta alla länder
         console.log("Hämtar alla länder...");
         const countries = await this.countryApi.getAllCountries();
-        if(!countries || countries.length === 0) throw new Error("Inga länder hämtade");
+        if (!countries || countries.length === 0) throw new Error("Inga länder hämtade");
         console.log("Alla länder hämtade:", countries.length);
 
-        // Hämta valutakurser för att filtrera dropdown
         const response = await fetch("currency_proxy.php?base=USD");
         const ratesData = await response.json();
-        if(!ratesData || !ratesData.rates) throw new Error("Kunde inte hämta kurser");
+        if (!ratesData || !ratesData.rates) throw new Error("Kunde inte hämta kurser");
         this.availableRates = {};
         Object.keys(ratesData.rates).forEach(k => this.availableRates[k.toUpperCase()] = ratesData.rates[k]);
 
@@ -72,13 +111,17 @@ App.prototype.init = async function(){
 
     } catch(err) {
         console.error("Fel vid initiering:", err);
+    } finally {
+        // Ta bort overlay när allt är klart
+        const existingOverlay = document.getElementById("loadingOverlayDynamic");
+        if (existingOverlay) existingOverlay.remove();
     }
 
     // Nollställ inputs
     const baseInput = document.getElementById("inB");
     const targetInput = document.getElementById("inM");
-    if(baseInput) baseInput.value = "";
-    if(targetInput) targetInput.value = "";
+    if (baseInput) baseInput.value = "";
+    if (targetInput) targetInput.value = "";
 };
 
 App.prototype.onShake = function(){
