@@ -8,7 +8,7 @@
 /* ===== Body ===== */
 body {
     font-family: Arial, Helvetica, sans-serif;
-    background: linear-gradient(135deg, #3a7bd5, #00d2ff);
+    background-image: url(background.jpg);
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -20,7 +20,7 @@ body {
 header {
     width: 100%;
     text-align: center;
-    padding: 25px;
+    padding: 15px;
     background: rgba(255,255,255,0.15);
     backdrop-filter: blur(5px);
     color: white;
@@ -28,14 +28,14 @@ header {
 }
 
 header h1 {
-    font-size: 2rem;
+    font-size: 1,5rem;
     letter-spacing: 1px;
 }
 
 /* ===== Main container ===== */
 #currentCountry {
     background: white;
-    padding: 25px;
+    padding: 15px;
     border-radius: 12px;
     width: 90%;
     max-width: 450px;
@@ -45,9 +45,12 @@ header h1 {
 }
 
 #currentCountry h2 {
-    margin-bottom: 15px;
+    font-size: 1rem;
+    margin-bottom: 10px;
 }
-
+#currentCountry img{
+    width: 50px;
+}
 /* ===== Country card ===== */
 .country-container {
     display: flex;
@@ -57,7 +60,7 @@ header h1 {
 }
 
 .country-container img {
-    width: 120px;
+    width: 70px;
     border-radius: 6px;
     box-shadow: 0 4px 10px rgba(0,0,0,0.2);
 }
