@@ -1,58 +1,40 @@
-var app=null;
+var app = null;
 
-function Main(){
+function Main() {
+  console.log("Main start");
 
-console.log("Main start");
-
-this.start();
-
+  this.start();
 }
 
-Main.prototype.start=function(){
+Main.prototype.start = function () {
+  const self = this;
 
-const self=this;
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        const position = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
 
-if(navigator.geolocation){
+        console.log("Position:", position);
 
-navigator.geolocation.getCurrentPosition(
+        app = new App(position);
+      },
 
-function(pos){
+      function () {
+        console.log("GPS nekad");
 
-const position={
+        app = new App(null);
+      },
+    );
+  } else {
+    console.log("Geolocation saknas");
 
-latitude:pos.coords.latitude,
-longitude:pos.coords.longitude
-
+    app = new App(null);
+  }
 };
 
-console.log("Position:",position);
-
-app=new App(position);
-
-},
-
-function(){
-
-console.log("GPS nekad");
-
-app=new App(null);
-
-}
-
-);
-
-}else{
-
-console.log("Geolocation saknas");
-
-app=new App(null);
-
-}
-
-};
-
-window.onload=function(){
-
-new Main();
-
+window.onload = function () {
+  new Main();
 };
