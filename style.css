@@ -255,3 +255,32 @@ select:focus {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+.switch-animate {
+  animation: switchMove 0.3s ease;
+}
+
+@keyframes switchMove {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
+}
+h5{
+    text-align: center;
+}
+#Switch {
+  background-color: #9a9a9e;        /* Mörk bakgrund */
+  color: #fff;                   /* Vit text */
+  border: 2px solid #555;        /* Mjuk grå kant */
+  border-radius: 8px;            /* Rundade hörn */
+  padding: 10px 20px;            /* Luft runt texten */
+  font-size: 16px;               /* Lagom stor text */
+  font-weight: 600;              /* Lite fetare */
+  cursor: pointer;               /* Pointer när man hover */
+  transition: all 0.2s ease;    /* Mjuka övergångar */
+}
+#Switch:active {
+  transform: translateY(1px);    /* Tryck-effekt */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}

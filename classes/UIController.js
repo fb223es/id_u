@@ -36,17 +36,6 @@ UIController.prototype.renderCountry = function(country, position){
 };
 
 /* =========================
-   VISA SHAKE MEDDELANDE
-   ========================= */
-UIController.prototype.showShakeMessage = function(text){
-    if(!this.container) return;
-    this.container.innerHTML = "";
-    const msg = document.createElement("p");
-    msg.innerText = text;
-    this.container.appendChild(msg);
-};
-
-/* =========================
    SKAPA VALUTADROPDOWNS
    ========================= */
 UIController.prototype.renderCurrencies = function(countries, userCountry, app, availableRates){
