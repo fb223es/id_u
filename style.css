@@ -28,7 +28,7 @@ header {
 }
 
 header h1 {
-    font-size: 1,5rem;
+    font-size: 1.5rem;
     letter-spacing: 1px;
 }
 
@@ -254,4 +254,15 @@ select:focus {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+.switch-animate {
+  animation: switchMove 0.3s ease;
+}
+
+@keyframes switchMove {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-10px); }
+  50% { transform: translateX(10px); }
+  100% { transform: translateX(0); }
 }
