@@ -1,40 +1,64 @@
-var app = null;
+/**
+ * Global app-instans
+ * @type {?Object}
+ */
+let app = null;
 
+/**
+ * Main klass
+ * @constructor
+ */
 function Main() {
-  console.log("Main start");
 
   this.start();
 }
 
+/**
+ * Startar applikationen och hämtar position
+ * @return {void}
+ */
 Main.prototype.start = function () {
-  const self = this;
 
   if (navigator.geolocation) {
+
     navigator.geolocation.getCurrentPosition(
+
+      /**
+       * @param {!GeolocationPosition} pos
+       */
       function (pos) {
+
+        /** @type {{latitude:number, longitude:number}} */
         const position = {
           latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          longitude: pos.coords.longitude
         };
 
-        console.log("Position:", position);
-
         app = new App(position);
+
       },
 
+      /**
+       * @return {void}
+       */
       function () {
-        console.log("GPS nekad");
 
         app = new App(null);
-      },
-    );
-  } else {
-    console.log("Geolocation saknas");
 
+      }
+
+    );
+
+  } else {
     app = new App(null);
+
   }
 };
 
+/**
+ * Initieras när sidan laddas
+ * @return {void}
+ */
 window.onload = function () {
   new Main();
 };

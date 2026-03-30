@@ -1,162 +1,266 @@
-function App(position) {
-  this.position = position || null;
 
+/**
+ * @constructor
+ * @param {{latitude:number, longitude:number}|null} position
+ */
+function App(position) {
+
+  if (!position) {
+    const ui = new UIController("countryInfo");
+    ui.showError("Kunde inte hämta position");
+    return;
+  }
+
+  /** @type {{latitude:number, longitude:number}} */
+  this.position = position;
+
+  /** @type {!GeoNamesService} */
   this.geoService = new GeoNamesService("fridooow99");
+
+  /** @type {!CountryApi} */
   this.countryApi = new CountryApi();
+
+  /** @type {!UIController} */
   this.ui = new UIController("countryInfo", "shakeMessageContainer");
+
+  /** @type {!DeviceMotionService} */
   this.motionService = new DeviceMotionService();
 
+  /**
+   * @type {{
+   *   flags: {png: string},
+   *   name: {common: string},
+   *   currencies: (?Object<string,{name:string}>)
+   * }|null}
+   */
   this.country = null;
+
+  /** @type {?number} */
   this.rate = null;
+
+  /** @type {?Object<string, number>} */
   this.availableRates = null;
 
   this.init();
 }
 
-App.prototype.init = async function() {
+
+/**
+ * @return {!Promise<void>}
+ */
+App.prototype.init = async function () {
+
   const self = this;
 
-  // Start switch-knapp
   this.switchBtn();
-
-  // Start converter
   this.initConverter();
 
-  // Start motion efter första klick (browserkrav)
-  document.body.addEventListener("click", function() {
-    self.motionService.start(function() {
+  document.body.addEventListener("click", function () {
+    self.motionService.start(function () {
       self.onShake();
     });
   }, { once: true });
 
   try {
-    // ----- POSITION BARA OM TILLGÄNGLIG -----
-    if (this.position) {
-      try {
-        const code = await this.geoService.getCountryCode(this.position.latitude, this.position.longitude);
-        const countryData = await this.countryApi.getCountryByCode(code);
-        if (countryData && countryData[0]) {
-          this.country = countryData[0];
-          this.ui.renderCountry(this.country, this.position);
-        } else {
-          this.ui.showError("Landdata saknas för din position.");
-        }
-      } catch (err) {
-        console.error(err);
-        this.ui.showError("Fel vid hämtning av position: " + err.message);
+
+    const code = await this.geoService.getCountryCode(
+      this.position.latitude,
+      this.position.longitude
+    );
+
+    const countryData = await this.countryApi.getCountryByCode(code);
+
+    if (!countryData || !countryData[0]) return;
+
+    /** @type {{
+     *   flags: {png: string},
+     *   name: {common: string},
+     *   currencies: (?Object<string,{name:string}>)
+     * }} */
+    this.country = /** @type {{
+      flags: {png: string},
+      name: {common: string},
+      currencies: (?Object<string,{name:string}>)
+    }} */ (countryData[0]);
+
+    this.ui.renderCountry(this.country, this.position);
+
+    const countries = await this.countryApi.getAllCountries();
+
+    const response = await fetch("currency_proxy.php?base=USD");
+
+    /** @type {{rates: (?Object<string, number>)}} */
+    const ratesData = /** @type {{rates: (?Object<string, number>)}} */ (await response.json());
+
+    if (!ratesData.rates) return;
+
+    /** @type {!Object<string, number>} */
+    const formattedRates = {};
+
+    for (const key in ratesData.rates) {
+      if (ratesData.rates.hasOwnProperty(key)) {
+        formattedRates[key.toUpperCase()] =
+          Number(ratesData.rates[key]);
       }
-    } else {
-      this.ui.showError("Vi kan inte läsa in din position men du kan använda appen ändå.");
     }
 
-    // ----- HÄMTA ALLA LÄNDER -----
-    const countries = await this.countryApi.getAllCountries();
-    if (!countries || countries.length === 0) throw new Error("Inga länder hämtade");
+    this.availableRates = formattedRates;
 
-    // ----- HÄMTA VALUTAKURS -----
-    const response = await fetch("currency_proxy.php?base=USD");
-    const ratesData = await response.json();
-    if (!ratesData || !ratesData.rates) throw new Error("Kunde inte hämta kurser");
+    this.ui.renderCurrencies(
+      countries,
+      this.country,
+      this,
+      formattedRates
+    );
 
-    this.availableRates = {};
-    Object.keys(ratesData.rates).forEach(k => this.availableRates[k.toUpperCase()] = parseFloat(ratesData.rates[k]));
-
-    // ----- RENDER DROPDOWNS -----
-    this.ui.renderCurrencies(countries, this.country, this, this.availableRates);
-
-  } catch(err) {
-    console.error("Fel vid initiering:", err);
-    this.ui.showError(err.message || "Okänt fel vid initiering");
+  } catch (e) {
+    this.ui.showError("Fel vid laddning");
   }
 };
 
-// ===== SHAKE HANDLER =====
-App.prototype.onShake = function() {
-  if (document.activeElement) document.activeElement.blur();
+
+/**
+ * @return {void}
+ */
+App.prototype.onShake = function () {
+  if (document.activeElement) {
+    document.activeElement.blur();
+  }
   this.switchCurrencies();
 };
 
-// ===== HÄMTA VALUTAKURS =====
-App.prototype.loadRate = async function() {
-  const base = document.getElementById("baseCurrency").value.toUpperCase();
-  const target = document.getElementById("targetCurrency").value.toUpperCase();
+
+/**
+ * @return {!Promise<void>}
+ */
+App.prototype.loadRate = async function () {
+
+  const base = /** @type {?HTMLSelectElement} */ (
+    document.getElementById("baseCurrency")
+  );
+
+  const target = /** @type {?HTMLSelectElement} */ (
+    document.getElementById("targetCurrency")
+  );
+
   if (!base || !target) return;
 
-  try {
-    const response = await fetch(`currency_proxy.php?base=${base}&symbols=${target}`);
-    const data = await response.json();
+  const baseVal = base.value.toUpperCase();
+  const targetVal = target.value.toUpperCase();
 
-    if (!data || !data.rates) throw new Error("Kunde inte hämta kurs");
+  const response = await fetch(
+    "currency_proxy.php?base=" + baseVal + "&symbols=" + targetVal
+  );
 
-    const key = Object.keys(data.rates).find(k => k.toUpperCase() === target);
-    if (!key) throw new Error("Kurs saknas för vald valuta");
+  /** @type {{rates: (?Object<string, number>)}} */
+  const data = /** @type {{rates: (?Object<string, number>)}} */ (await response.json());
 
-    this.rate = parseFloat(data.rates[key]);
+  if (!data.rates) return;
 
-    this.ui.updateCurrencyDropdowns(base, target);
-  } catch(err) {
-    console.error("Fel vid hämtning av kurs:", err);
-    this.ui.showError(err.message || "Okänt fel vid hämtning av kurs");
-  }
+  const key = Object.keys(data.rates).find(function (k) {
+    return k.toUpperCase() === targetVal;
+  });
+
+  if (!key) return;
+
+  this.rate = Number(data.rates[key]);
+
+  this.ui.updateCurrencyDropdowns(baseVal, targetVal);
 };
 
-// ===== INIT CONVERTER =====
-App.prototype.initConverter = function() {
-  const baseInput = document.getElementById("inB");
-  const targetInput = document.getElementById("inM");
+
+/**
+ * @return {void}
+ */
+App.prototype.initConverter = function () {
+
+  const baseInput = /** @type {?HTMLInputElement} */ (
+    document.getElementById("inB")
+  );
+
+  const targetInput = /** @type {?HTMLInputElement} */ (
+    document.getElementById("inM")
+  );
+
   if (!baseInput || !targetInput) return;
 
-  function sanitizeNumber(value) {
-    value = value.replace(/[^0-9.]/g, "");
-    const parts = value.split(".");
-    if (parts.length > 2) value = parts[0] + "." + parts.slice(1).join("");
-    if (value.startsWith(".")) value = value.substring(1);
-    return value;
+  const sanitize = function (v) {
+    return v.replace(/[^0-9.]/g, "");
+  };
+
+  const self = this;
+
+  baseInput.addEventListener("input", function (e) {
+    const el = /** @type {!HTMLInputElement} */ (e.target);
+    el.value = sanitize(el.value);
+
+    const val = parseFloat(baseInput.value);
+
+    if (!isNaN(val) && self.rate) {
+      targetInput.value = (val * self.rate).toFixed(2);
+    }
+  });
+
+  targetInput.addEventListener("input", function (e) {
+    const el = /** @type {!HTMLInputElement} */ (e.target);
+    el.value = sanitize(el.value);
+
+    const val = parseFloat(targetInput.value);
+
+    if (!isNaN(val) && self.rate) {
+      baseInput.value = (val / self.rate).toFixed(2);
+    }
+  });
+};
+
+
+/**
+ * @return {void}
+ */
+App.prototype.switchCurrencies = function () {
+
+  const inB = /** @type {?HTMLInputElement} */ (document.getElementById("inB"));
+  const inM = /** @type {?HTMLInputElement} */ (document.getElementById("inM"));
+  const bv = /** @type {?HTMLElement} */ (document.getElementById("bv"));
+  const mv = /** @type {?HTMLElement} */ (document.getElementById("mv"));
+
+  const baseSelect = /** @type {?HTMLSelectElement} */ (document.getElementById("baseCurrency"));
+  const targetSelect = /** @type {?HTMLSelectElement} */ (document.getElementById("targetCurrency"));
+
+  if (!inB || !inM || !bv || !mv || !baseSelect || !targetSelect) return;
+
+  const temp = inB.value;
+  inB.value = inM.value;
+  inM.value = temp;
+
+  const tempText = bv.innerText;
+  bv.innerText = mv.innerText;
+  mv.innerText = tempText;
+
+  const tempSelect = baseSelect.value;
+  baseSelect.value = targetSelect.value;
+  targetSelect.value = tempSelect;
+
+  if (this.rate) {
+    this.rate = 1 / this.rate;
   }
-
-  baseInput.addEventListener("input", (e) => {
-    e.target.value = sanitizeNumber(e.target.value);
-    const value = parseFloat(baseInput.value);
-    if (isNaN(value) || !this.rate) {
-      targetInput.value = "";
-      return;
-    }
-    targetInput.value = (value * this.rate).toFixed(2);
-  });
-
-  targetInput.addEventListener("input", (e) => {
-    e.target.value = sanitizeNumber(e.target.value);
-    const value = parseFloat(targetInput.value);
-    if (isNaN(value) || !this.rate) {
-      baseInput.value = "";
-      return;
-    }
-    baseInput.value = (value / this.rate).toFixed(2);
-  });
 };
 
-// ===== SWITCH CURRENCIES =====
-App.prototype.switchCurrencies = function() {
-  const container = document.getElementById("result");
-  container.classList.add("switch-animate");
-  setTimeout(() => container.classList.remove("switch-animate"), 300);
 
-  const inB = document.getElementById("inB");
-  const inM = document.getElementById("inM");
-  const bv = document.getElementById("bv");
-  const mv = document.getElementById("mv");
-  const baseSelect = document.getElementById("baseCurrency");
-  const targetSelect = document.getElementById("targetCurrency");
+/**
+ * @return {void}
+ */
+App.prototype.switchBtn = function () {
 
-  [inB.value, inM.value] = [inM.value, inB.value];
-  [bv.innerText, mv.innerText] = [mv.innerText, bv.innerText];
-  [baseSelect.value, targetSelect.value] = [targetSelect.value, baseSelect.value];
+  const btn = /** @type {?HTMLElement} */ (
+    document.getElementById("Switch")
+  );
 
-  if (this.rate) this.rate = 1 / this.rate;
-};
+  if (!btn) return;
 
-// ===== SWITCH BUTTON =====
-App.prototype.switchBtn = function() {
-  const btn = document.getElementById("Switch");
-  btn.addEventListener("click", () => this.switchCurrencies());
+  const self = this;
+
+  btn.addEventListener("click", function () {
+    self.switchCurrencies();
+  });
 };
