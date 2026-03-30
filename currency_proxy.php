@@ -36,7 +36,7 @@ if ($curlError || $httpcode !== 200) {
 $data = json_decode($response, true);
 if (!$data || !isset($data['rates'])) {
     echo json_encode([
-        'error' => 'Inga kurser hittades i API-svaret'
+        'error' => 'Inga kurser hittades i API-sletet'
     ]);
     exit;
 }
