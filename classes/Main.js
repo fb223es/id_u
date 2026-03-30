@@ -1,63 +1,57 @@
-/**
- * Global app-instans
- * @type {?Object}
- */
+// Använd let istället för let
 let app = null;
 
 /**
- * Main klass
+ * Huvudklass som startar applikationen.
  * @constructor
  */
 function Main() {
-
+  console.log("Main start");
   this.start();
 }
 
 /**
- * Startar applikationen och hämtar position
- * @return {void}
+ * Startar applikationen genom att hämta användarens GPS-position.
+ * Om positionen inte kan hämtas, startas App med null.
+ * @returns {void}
  */
 Main.prototype.start = function () {
-
   if (navigator.geolocation) {
-
     navigator.geolocation.getCurrentPosition(
-
       /**
-       * @param {!GeolocationPosition} pos
+       * Callback som körs när positionen hämtats.
+       * @param {?GeolocationPosition} pos Positionsobjekt från webbläsaren
        */
       function (pos) {
-
-        /** @type {{latitude:number, longitude:number}} */
         const position = {
           latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude
+          longitude: pos.coords.longitude,
         };
 
-        app = new App(position);
+        console.log("Position:", position);
 
+        app = new App(position);
       },
 
       /**
-       * @return {void}
+       * Callback när GPS nekas
+       * @param {?GeolocationPositionError} err
        */
-      function () {
+      function (err) {
+        console.log("GPS nekad");
 
-        app = new App(null);
-
-      }
-
+        app = new App(/** @type {{latitude:number,longitude:number}} */ (null));
+      },
     );
-
   } else {
-    app = new App(null);
+    console.log("Geolocation saknas");
 
+    app = new App(/** @type {{latitude:number,longitude:number}} */ (null));
   }
 };
 
 /**
- * Initieras när sidan laddas
- * @return {void}
+ * Startar Main när sidan laddas
  */
 window.onload = function () {
   new Main();

@@ -18,8 +18,8 @@ function GeoNamesService(username) {
  * @return {!Promise<string>}
  */
 GeoNamesService.prototype.getCountryCode = function(lat, lng) {
-
   return fetch(
+   
     "https://secure.geonames.org/countryCodeJSON?lat=" +
     lat +
     "&lng=" +
